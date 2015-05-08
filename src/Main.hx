@@ -34,6 +34,8 @@ class Main
 			}
 		}
 		
+		File.saveContent("Output.html", story.toHtmlDocument().toString());
+		
 	}
 	
 }

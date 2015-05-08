@@ -1,5 +1,6 @@
 package libtwine;
 
+import htmlparser.HtmlAttribute;
 import htmlparser.HtmlDocument;
 import htmlparser.HtmlNode;
 import htmlparser.HtmlNodeElement;
@@ -419,6 +420,48 @@ class TwinePassage
 			return pass;
 		}
 	}
+	
+	public function toHtmlNodeElement() : HtmlNodeElement {
+		var ele = new HtmlNodeElement("tw-passagedata", [
+			new HtmlAttribute("pid", Std.string(pid), '"'),
+			new HtmlAttribute("position", position.join(","), '"'),
+			new HtmlAttribute("name", StringTools.htmlEscape(name, true), '"'),
+			new HtmlAttribute("tags", StringTools.htmlEscape(tags.join(" "), true), '"')
+		]
+		);
+		ele.setInnerText(body);
+		return ele;
+	}
+	
+	public static function detokenize(tok : Array<TwinePassageToken>) {
+		var r0 = "";
+		for (t0 in tok) {
+			switch(t0) {
+				case TPTBody(text):
+					r0 += text;
+				case TPTLink(type, display, link, expression):
+					r0 += "[[";
+					switch(type) {
+						case TLTPipe:
+							r0 += display; r0 += "|"; r0 += link;
+						case TLTLeftArrow:
+							r0 += link; r0 += "<-"; r0 += display;
+						case TLTRightArrow:
+							r0 += display; r0 += "->"; r0 += link;
+						case TLTNone:
+							r0 += link;
+					}
+					if (expression != null && expression.length > 0) {
+						r0 += "]["; r0 += expression; r0 += "]]";						
+					}
+					else r0 += "]]";
+				case TPTExpression(text):
+					r0 += "<<" + text + ">>";
+			}
+		}
+		return r0;
+	}
+	
 }
 
 class TwineStory
@@ -629,6 +672,32 @@ class TwineStory
 			}
 		}		
 		return story;
+	}
+	
+	public function toHtmlDocument() : HtmlDocument {
+		/* 1. copy doc_source
+		 * 2. replace story_source with the new node */
+		
+		var outdoc = new HtmlDocument(doc_source.toString());
+		var hstory = outdoc.find("tw-storydata");
+		for (n0 in hstory) {
+			n0.setInnerText("");
+			n0.attributes = [
+				new HtmlAttribute("name", StringTools.htmlEscape(name, true), '"'),
+				new HtmlAttribute("startnode", Std.string(startnode), '"'),
+				new HtmlAttribute("creator", StringTools.htmlEscape(creator, true), '"'),
+				new HtmlAttribute("creator-version", StringTools.htmlEscape(creator_version, true), '"'),
+				new HtmlAttribute("ifid", StringTools.htmlEscape(ifid, true), '"'),
+				new HtmlAttribute("format", StringTools.htmlEscape(format, true), '"'),
+				new HtmlAttribute("options", StringTools.htmlEscape(options, true), '"'),
+			];
+			n0.addChild(style);
+			n0.addChild(script);
+			for (p0 in passagedata) {
+				n0.addChild(p0.toHtmlNodeElement());
+			}
+		}
+		return outdoc;
 	}
 	
 }
